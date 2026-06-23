@@ -346,16 +346,16 @@
         </div>
       </div>
       <div>
-        <div class="group-label">Proteins — pick one or more</div>
-        <div class="option-grid">
-          <button class="option-btn" onclick="toggleProtein('beef',this)"><span class="opt-icon">🥩</span>Beef</button>
-          <button class="option-btn" onclick="toggleProtein('chicken',this)"><span class="opt-icon">🍗</span>Chicken</button>
-          <button class="option-btn" onclick="toggleProtein('pork',this)"><span class="opt-icon">🥓</span>Pork</button>
-          <button class="option-btn" onclick="toggleProtein('shrimp',this)"><span class="opt-icon">🦐</span>Shrimp</button>
-          <button class="option-btn" onclick="toggleProtein('salmon',this)"><span class="opt-icon">🐟</span>Salmon</button>
-          <button class="option-btn" onclick="toggleProtein('eggs',this)"><span class="opt-icon">🥚</span>Eggs</button>
-          <button class="option-btn" onclick="toggleProtein('sausage',this)"><span class="opt-icon">🌭</span>Sausage</button>
-          <button class="option-btn" onclick="toggleProtein('veggie',this)"><span class="opt-icon">🥦</span>Veggie</button>
+        <div class="group-label">Protein — pick one</div>
+        <div class="option-grid" id="protein-grid">
+          <button class="option-btn" onclick="selectProtein('beef',this)"><span class="opt-icon">🥩</span>Beef</button>
+          <button class="option-btn" onclick="selectProtein('chicken',this)"><span class="opt-icon">🍗</span>Chicken</button>
+          <button class="option-btn" onclick="selectProtein('pork',this)"><span class="opt-icon">🥓</span>Pork</button>
+          <button class="option-btn" onclick="selectProtein('shrimp',this)"><span class="opt-icon">🦐</span>Shrimp</button>
+          <button class="option-btn" onclick="selectProtein('salmon',this)"><span class="opt-icon">🐟</span>Salmon</button>
+          <button class="option-btn" onclick="selectProtein('eggs',this)"><span class="opt-icon">🥚</span>Eggs</button>
+          <button class="option-btn" onclick="selectProtein('sausage',this)"><span class="opt-icon">🌭</span>Sausage</button>
+          <button class="option-btn" onclick="selectProtein('veggie',this)"><span class="opt-icon">🥦</span>Veggie</button>
         </div>
       </div>
       <div class="error-msg" id="recipe-error"></div>
@@ -561,15 +561,16 @@
       document.querySelectorAll('#meal-grid .option-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
     }
-    function toggleProtein(p, btn) {
-      if (btn.classList.contains('selected')) { btn.classList.remove('selected'); selectedProteins = selectedProteins.filter(x => x !== p); }
-      else { btn.classList.add('selected'); selectedProteins.push(p); }
+    function selectProtein(p, btn) {
+      selectedProteins = [p];
+      document.querySelectorAll('#protein-grid .option-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
     }
     async function buildRecipe() {
       var err = document.getElementById('recipe-error');
       err.classList.remove('visible');
       if (!selectedMeal) { err.textContent = 'Pick a meal type first!'; err.classList.add('visible'); return; }
-      if (!selectedProteins.length) { err.textContent = 'Select at least one protein.'; err.classList.add('visible'); return; }
+      if (!selectedProteins.length) { err.textContent = 'Select a protein.'; err.classList.add('visible'); return; }
       document.getElementById('recipe-result').classList.remove('visible');
       document.getElementById('recipe-loading').classList.add('visible');
       document.getElementById('build-btn').disabled = true;
@@ -579,25 +580,34 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             model: 'claude-sonnet-4-6', max_tokens: 1000,
-            messages: [{ role: 'user', content: 'You are the Backyard Pitstop AI. Generate a backyard BBQ/grilling/smoking recipe.\nMeal type: ' + selectedMeal + '\nProteins: ' + selectedProteins.join(', ') + '\nStyle: authentic backyard BBQ. Achievable for a home cook.\n\nRespond ONLY with a JSON object (no markdown, no backticks):\n{"name":"Recipe Name","prep":"X min","cook":"X min","serves":"4","grill":"Weber Kettle","ingredients":["item 1","item 2","item 3","item 4","item 5","item 6"],"steps":["Step 1","Step 2","Step 3","Step 4"],"tip":"One practical Pitstop Tip"}' }]
+            messages: [{ role: 'user', content: 'You are the Backyard Pitstop AI. Generate a backyard BBQ/grilling/smoking recipe.\nMeal type: ' + selectedMeal + '\nProtein: ' + selectedProteins[0] + '\nStyle: authentic backyard BBQ. Achievable for a home cook.\n\nRespond ONLY with a valid JSON object. No markdown, no backticks, no extra text before or after. Example format:\n{"name":"Recipe Name","prep":"15 min","cook":"30 min","serves":"4","grill":"Weber Kettle","ingredients":["item 1","item 2","item 3","item 4","item 5","item 6"],"steps":["Step 1 text","Step 2 text","Step 3 text","Step 4 text"],"tip":"One practical BBQ tip"}' }]
           })
         });
+        if (!resp.ok) throw new Error('API error ' + resp.status);
         var data = await resp.json();
-        var text = data.content.map(c => c.text || '').join('').replace(/```json|```/g,'').trim();
+        if (!data.content || !data.content.length) throw new Error('Empty response');
+        var text = data.content.map(function(c){ return c.text || ''; }).join('');
+        text = text.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
+        var jsonStart = text.indexOf('{');
+        var jsonEnd = text.lastIndexOf('}');
+        if (jsonStart === -1 || jsonEnd === -1) throw new Error('No JSON found');
+        text = text.slice(jsonStart, jsonEnd + 1);
         var r = JSON.parse(text);
-        document.getElementById('r-name').textContent = r.name;
-        document.getElementById('r-prep').textContent = r.prep;
-        document.getElementById('r-cook').textContent = r.cook;
-        document.getElementById('r-serves').textContent = r.serves;
-        document.getElementById('r-grill').textContent = r.grill;
+        document.getElementById('r-name').textContent = r.name || 'BBQ Recipe';
+        document.getElementById('r-prep').textContent = r.prep || '—';
+        document.getElementById('r-cook').textContent = r.cook || '—';
+        document.getElementById('r-serves').textContent = r.serves || '4';
+        document.getElementById('r-grill').textContent = r.grill || '—';
         var ingEl = document.getElementById('r-ingredients'); ingEl.innerHTML = '';
-        r.ingredients.forEach(i => { var li = document.createElement('li'); li.innerHTML = '<span class="ing-dot">●</span><span>' + i + '</span>'; ingEl.appendChild(li); });
+        (r.ingredients || []).forEach(function(i){ var li = document.createElement('li'); li.innerHTML = '<span class="ing-dot">●</span><span>' + i + '</span>'; ingEl.appendChild(li); });
         var stEl = document.getElementById('r-steps'); stEl.innerHTML = '';
-        r.steps.forEach((s,i) => { var d = document.createElement('div'); d.className='step-item'; d.innerHTML='<div class="step-num">'+(i+1)+'</div><div class="step-text">'+s+'</div>'; stEl.appendChild(d); });
-        document.getElementById('r-tip').innerHTML = '🔥 <strong>Pitstop Tip:</strong> ' + r.tip;
+        (r.steps || []).forEach(function(s,i){ var d = document.createElement('div'); d.className='step-item'; d.innerHTML='<div class="step-num">'+(i+1)+'</div><div class="step-text">'+s+'</div>'; stEl.appendChild(d); });
+        document.getElementById('r-tip').innerHTML = '🔥 <strong>Pitstop Tip:</strong> ' + (r.tip || '');
         document.getElementById('recipe-result').classList.add('visible');
+        document.getElementById('recipe-result').scrollIntoView({behavior:'smooth', block:'start'});
       } catch(e) {
-        document.getElementById('recipe-error').textContent = 'Something went wrong — tap to try again.';
+        console.error('Recipe error:', e);
+        document.getElementById('recipe-error').textContent = 'Something went wrong — check your connection and try again.';
         document.getElementById('recipe-error').classList.add('visible');
       }
       document.getElementById('recipe-loading').classList.remove('visible');
@@ -686,7 +696,8 @@
       addStep('🌡️','Always Verify','Use a probe thermometer — times are estimates only.',null);
       var rp = document.getElementById('race-plan');
       rp.classList.add('visible');
-      rp.scrollIntoView({behavior:'smooth',block:'nearest'});
+      var screen = document.getElementById('screen-calc');
+      setTimeout(function(){ screen.scrollTop = screen.scrollHeight; }, 100);
     }
 
     // ── GRILL FINDER ──
