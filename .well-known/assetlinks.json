@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.backyardpitstop.app",
+    "sha256_cert_fingerprints": ["54:7A:EA:69:48:89:29:35:F6:00:7D:65:AD:34:38:11:CE:60:5C:FF:CF:29:98:19:6A:2A:AE:DB:A2:36:5E:96"]
+  }
+}]
