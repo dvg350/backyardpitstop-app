@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1a1a1a">
+  <meta name="description" content="BBQ Recipe Builder, Cook Calculator & Grill Finder from The Backyard Pitstop.">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Pitstop">
+
+  <title>Backyard Pitstop</title>
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
+  <!-- Apple splash screens -->
+  <link rel="apple-touch-startup-image" href="icons/splash-1080x1920.png">
+
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --orange: #f97316;
+      --orange-dark: #c2570d;
+      --dark: #1a1a1a;
+      --cream: #fdf6ee;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    html, body {
+      height: 100%;
+      background: #1a1a1a;
+      overscroll-behavior: none;
+    }
+
+    /* ── SPLASH SCREEN ── */
+    #splash {
+      position: fixed;
+      inset: 0;
+      background: #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.5s ease;
+    }
+    #splash.hide {
+      opacity: 0;
+      pointer-events: none;
+    }
+    #splash img {
+      width: 65vw;
+      max-width: 280px;
+      animation: splashPulse 1.4s ease-in-out infinite alternate;
+    }
+    #splash .loading-dots {
+      margin-top: 32px;
+      display: flex;
+      gap: 8px;
+    }
+    #splash .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--orange);
+      animation: dotBounce 1s ease-in-out infinite;
+    }
+    #splash .dot:nth-child(2) { animation-delay: 0.15s; }
+    #splash .dot:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes splashPulse {
+      from { transform: scale(1);    opacity: 0.9; }
+      to   { transform: scale(1.04); opacity: 1;   }
+    }
+    @keyframes dotBounce {
+      0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+      40%           { transform: scale(1);   opacity: 1;   }
+    }
+
+    /* ── APP SHELL ── */
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      height: 100dvh;
+      background: #f5f0e8;
+      max-width: 480px;
+      margin: 0 auto;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    #app.visible { opacity: 1; }
+
+    /* ── HEADER ── */
+    .app-header {
+      background: var(--dark);
+      padding-top: calc(var(--safe-top) + 10px);
+      padding-left: 16px;
+      padding-right: 16px;
+      padding-bottom: 0;
+      border-bottom: 3px solid var(--orange);
+      flex-shrink: 0;
+    }
+    .header-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .header-logo { width: 36px; height: 36px; border-radius: 8px; }
+    .brand-name {
+      font-family: 'Oswald', sans-serif;
+      color: white;
+      font-size: 18px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      flex: 1;
+    }
+    .brand-name span { color: var(--orange); }
+    .tab-bar {
+      display: flex;
+      gap: 2px;
+    }
+    .tab {
+      flex: 1;
+      padding: 8px 2px;
+      background: transparent;
+      border: none;
+      border-bottom: 3px solid transparent;
+      color: rgba(255,255,255,0.45);
+      font-family: 'Lato', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      transition: color 0.15s, border-color 0.15s;
+      margin-bottom: -3px;
+    }
+    .tab.active { color: var(--orange); border-bottom-color: var(--orange); }
+    .tab-icon { font-size: 18px; display: block; margin-bottom: 2px; }
+
+    /* ── SCREENS ── */
+    .screen {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      gap: 14px;
+      padding-bottom: calc(var(--safe-bottom) + 16px);
+      -webkit-overflow-scrolling: touch;
+    }
+    .screen.active { display: flex; }
+
+    /* ── TYPOGRAPHY ── */
+    .section-title {
+      font-family: 'Oswald', sans-serif;
+      font-size: 20px;
+      color: #1a1a1a;
+      font-weight: 500;
+    }
+    .section-sub { font-size: 13px; color: #666; margin-top: 3px; line-height: 1.4; }
+    .group-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+
+    /* ── OPTION BUTTONS ── */
+    .option-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .option-btn {
+      background: white;
+      border: 1.5px solid #e8e0d4;
+      border-radius: 10px;
+      padding: 13px 8px;
+      cursor: pointer;
+      text-align: center;
+      font-family: 'Lato', sans-serif;
+      font-size: 13px;
+      color: #333;
+      line-height: 1.3;
+      transition: border-color 0.12s, background 0.12s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .option-btn .opt-icon { font-size: 24px; display: block; margin-bottom: 5px; }
+    .option-btn.selected {
+      border-color: var(--orange);
+      border-width: 2px;
+      background: #fff7f0;
+      color: var(--orange-dark);
+      font-weight: 700;
+    }
+
+    /* ── CTA BUTTON ── */
+    .cta-btn {
+      width: 100%;
+      padding: 15px;
+      background: var(--orange);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-family: 'Oswald', sans-serif;
+      font-size: 17px;
+      font-weight: 500;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .cta-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .cta-btn:not(:disabled):active { transform: scale(0.98); }
+
+    /* ── RECIPE RESULT CARD ── */
+    .result-card { background: white; border: 1.5px solid #e8e0d4; border-radius: 12px; overflow: hidden; display: none; }
+    .result-card.visible { display: block; }
+    .rc-header { background: var(--dark); padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; }
+    .rc-header .recipe-name { font-family: 'Oswald', sans-serif; color: white; font-size: 16px; font-weight: 500; flex: 1; margin-right: 8px; }
+    .pitstop-badge { background: var(--orange); color: white; font-size: 9px; font-weight: 700; padding: 3px 8px; border-radius: 6px; letter-spacing: 0.5px; white-space: nowrap; }
+    .stats-strip { display: grid; grid-template-columns: repeat(4, 1fr); background: #222; }
+    .stat-cell { text-align: center; border-right: 1px solid rgba(255,255,255,0.08); padding: 9px 4px; }
+    .stat-cell:last-child { border-right: none; }
+    .stat-label { font-size: 9px; color: var(--orange); text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value { font-size: 12px; color: white; font-weight: 700; margin-top: 2px; }
+    .rc-body { padding: 14px; }
+    .rc-section { font-family: 'Oswald', sans-serif; font-size: 12px; font-weight: 500; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 7px; margin-top: 14px; }
+    .rc-section:first-child { margin-top: 0; }
+    .ing-list { list-style: none; }
+    .ing-list li { font-size: 13px; color: #333; padding: 5px 0; border-bottom: 1px solid #f0ebe3; display: flex; align-items: flex-start; gap: 8px; }
+    .ing-list li:last-child { border-bottom: none; }
+    .ing-dot { color: var(--orange); font-size: 9px; margin-top: 4px; flex-shrink: 0; }
+    .step-item { display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-start; }
+    .step-num { width: 24px; height: 24px; min-width: 24px; background: var(--orange); color: white; border-radius: 50%; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+    .step-text { font-size: 13px; color: #333; line-height: 1.55; }
+    .pitstop-tip { background: #fff7f0; border-left: 3px solid var(--orange); padding: 10px 12px; border-radius: 0 8px 8px 0; font-size: 12px; color: var(--orange-dark); margin-top: 12px; line-height: 1.5; }
+    .shuffle-btn { width: 100%; padding: 11px; background: transparent; border: 1.5px solid var(--orange); border-radius: 10px; color: var(--orange); font-family: 'Lato', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; margin-top: 10px; }
+    .loading-state { text-align: center; padding: 36px 16px; display: none; }
+    .loading-state.visible { display: block; }
+    .flame-anim { font-size: 42px; animation: fp 0.9s ease-in-out infinite alternate; }
+    @keyframes fp { from { transform: scale(1); } to { transform: scale(1.18); } }
+    .loading-text { font-size: 14px; color: #888; margin-top: 10px; }
+    .error-msg { background: #fff0e6; border: 1px solid var(--orange); border-radius: 8px; padding: 10px 12px; font-size: 13px; color: var(--orange-dark); display: none; }
+    .error-msg.visible { display: block; }
+
+    /* ── COOK CALC ── */
+    .meat-scroll { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .meat-scroll::-webkit-scrollbar { display: none; }
+    .meat-chip { background: white; border: 1.5px solid #e8e0d4; border-radius: 20px; padding: 8px 15px; font-family: 'Lato', sans-serif; font-size: 13px; cursor: pointer; white-space: nowrap; color: #333; flex-shrink: 0; }
+    .meat-chip.selected { background: var(--orange); border-color: var(--orange); color: white; font-weight: 700; }
+    .bp-select { width: 100%; padding: 12px; border: 1.5px solid #e8e0d4; border-radius: 10px; background: white; color: #333; font-family: 'Lato', sans-serif; font-size: 14px; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+    .weight-row { display: flex; gap: 10px; align-items: center; }
+    .weight-input { flex: 1; padding: 12px; border: 1.5px solid #e8e0d4; border-radius: 10px; background: white; color: #333; font-family: 'Oswald', sans-serif; font-size: 20px; font-weight: 500; }
+    .unit-toggle { display: flex; background: #ede8e0; border-radius: 8px; padding: 3px; gap: 2px; }
+    .unit-btn { padding: 7px 14px; border: none; border-radius: 6px; background: transparent; font-family: 'Lato', sans-serif; font-size: 13px; cursor: pointer; color: #888; font-weight: 700; }
+    .unit-btn.active { background: white; color: #333; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .race-plan { background: white; border: 1.5px solid #e8e0d4; border-radius: 12px; overflow: hidden; display: none; }
+    .race-plan.visible { display: block; }
+    .rp-header { background: var(--dark); padding: 12px 14px; }
+    .rp-title { font-family: 'Oswald', sans-serif; color: white; font-size: 15px; font-weight: 500; }
+    .rp-sub { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 2px; }
+    .plan-step { display: flex; gap: 12px; padding: 12px 14px; border-bottom: 1px solid #f0ebe3; align-items: flex-start; }
+    .plan-step:last-child { border-bottom: none; }
+    .plan-icon { font-size: 20px; min-width: 26px; text-align: center; margin-top: 1px; }
+    .plan-step-title { font-size: 13px; font-weight: 700; color: #222; }
+    .plan-step-detail { font-size: 12px; color: #666; margin-top: 2px; line-height: 1.4; }
+    .temp-badge { display: inline-block; background: #fff0e6; color: var(--orange-dark); font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 10px; margin-top: 4px; }
+
+    /* ── GRILL FINDER ── */
+    .progress-wrap { background: #e8e0d4; border-radius: 4px; height: 4px; width: 100%; }
+    .progress-fill { height: 4px; background: var(--orange); border-radius: 4px; transition: width 0.3s; }
+    .q-counter { font-size: 12px; color: #888; font-weight: 700; margin-bottom: 6px; }
+    .nav-row { display: flex; justify-content: space-between; align-items: center; }
+    .back-btn { background: transparent; border: none; color: #888; font-family: 'Lato', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; padding: 10px 0; }
+    .next-btn { padding: 12px 24px; background: var(--orange); color: white; border: none; border-radius: 10px; font-family: 'Oswald', sans-serif; font-size: 15px; font-weight: 500; cursor: pointer; }
+    .next-btn:disabled { opacity: 0.4; }
+    .grill-result { background: white; border: 2px solid var(--orange); border-radius: 14px; overflow: hidden; display: none; }
+    .grill-result.visible { display: block; }
+    .gr-header { background: var(--dark); padding: 20px 14px; text-align: center; }
+    .gr-icon { font-size: 52px; display: block; margin-bottom: 6px; }
+    .gr-match-label { font-size: 10px; color: var(--orange); letter-spacing: 1px; text-transform: uppercase; font-weight: 700; }
+    .gr-name { font-family: 'Oswald', sans-serif; color: white; font-size: 26px; font-weight: 500; margin-top: 4px; }
+    .gr-body { padding: 16px; }
+    .gr-desc { font-size: 14px; color: #333; line-height: 1.6; margin-bottom: 14px; }
+    .gr-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+    .gr-tag { font-size: 12px; background: #f5f0e8; color: #666; padding: 5px 12px; border-radius: 12px; border: 1px solid #e8e0d4; }
+    .gr-also-title { font-family: 'Oswald', sans-serif; font-size: 12px; font-weight: 500; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .gr-also-text { font-size: 13px; color: #555; line-height: 1.5; margin-bottom: 16px; }
+    .restart-btn { width: 100%; padding: 12px; background: transparent; border: 1.5px solid #ccc; border-radius: 10px; color: #888; font-family: 'Lato', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <!-- SPLASH SCREEN -->
+  <div id="splash">
+    <img src="logo.png" alt="Backyard Pitstop">
+    <div class="loading-dots">
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div id="app">
+    <div class="app-header">
+      <div class="header-top">
+        <img src="icons/icon-72x72.png" alt="Logo" class="header-logo">
+        <div class="brand-name">backyard <span>pitstop</span></div>
+      </div>
+      <div class="tab-bar">
+        <button class="tab active" onclick="switchTab('recipe')" id="tab-recipe">
+          <span class="tab-icon">🔥</span>Recipe Builder
+        </button>
+        <button class="tab" onclick="switchTab('calc')" id="tab-calc">
+          <span class="tab-icon">⏱️</span>Cook Calc
+        </button>
+        <button class="tab" onclick="switchTab('grill')" id="tab-grill">
+          <span class="tab-icon">🏁</span>Grill Finder
+        </button>
+      </div>
+    </div>
+
+    <!-- RECIPE BUILDER SCREEN -->
+    <div class="screen active" id="screen-recipe">
+      <div>
+        <div class="section-title">What are you cooking?</div>
+        <div class="section-sub">Pick a meal type and your proteins — we'll fire up a fresh recipe.</div>
+      </div>
+      <div>
+        <div class="group-label">Meal Type</div>
+        <div class="option-grid">
+          <button class="option-btn" onclick="selectMeal('breakfast',this)"><span class="opt-icon">🍳</span>Breakfast</button>
+          <button class="option-btn" onclick="selectMeal('lunch',this)"><span class="opt-icon">🥙</span>Lunch</button>
+          <button class="option-btn" onclick="selectMeal('dinner',this)"><span class="opt-icon">🍖</span>Dinner</button>
+          <button class="option-btn" onclick="selectMeal('snack',this)"><span class="opt-icon">🧀</span>Snack / Sides</button>
+        </div>
+      </div>
+      <div>
+        <div class="group-label">Proteins — pick one or more</div>
+        <div class="option-grid">
+          <button class="option-btn" onclick="toggleProtein('beef',this)"><span class="opt-icon">🥩</span>Beef</button>
+          <button class="option-btn" onclick="toggleProtein('chicken',this)"><span class="opt-icon">🍗</span>Chicken</button>
+          <button class="option-btn" onclick="toggleProtein('pork',this)"><span class="opt-icon">🥓</span>Pork</button>
+          <button class="option-btn" onclick="toggleProtein('shrimp',this)"><span class="opt-icon">🦐</span>Shrimp</button>
+          <button class="option-btn" onclick="toggleProtein('salmon',this)"><span class="opt-icon">🐟</span>Salmon</button>
+          <button class="option-btn" onclick="toggleProtein('eggs',this)"><span class="opt-icon">🥚</span>Eggs</button>
+          <button class="option-btn" onclick="toggleProtein('sausage',this)"><span class="opt-icon">🌭</span>Sausage</button>
+          <button class="option-btn" onclick="toggleProtein('veggie',this)"><span class="opt-icon">🥦</span>Veggie</button>
+        </div>
+      </div>
+      <div class="error-msg" id="recipe-error"></div>
+      <button class="cta-btn" id="build-btn" onclick="buildRecipe()">🔥 Build My Recipe</button>
+      <div class="loading-state" id="recipe-loading">
+        <div class="flame-anim">🔥</div>
+        <div class="loading-text">Firing up your recipe...</div>
+      </div>
+      <div class="result-card" id="recipe-result">
+        <div class="rc-header">
+          <div class="recipe-name" id="r-name"></div>
+          <div class="pitstop-badge">PITSTOP</div>
+        </div>
+        <div class="stats-strip">
+          <div class="stat-cell"><div class="stat-label">Prep</div><div class="stat-value" id="r-prep">—</div></div>
+          <div class="stat-cell"><div class="stat-label">Cook</div><div class="stat-value" id="r-cook">—</div></div>
+          <div class="stat-cell"><div class="stat-label">Serves</div><div class="stat-value" id="r-serves">—</div></div>
+          <div class="stat-cell"><div class="stat-label">Grill</div><div class="stat-value" id="r-grill">—</div></div>
+        </div>
+        <div class="rc-body">
+          <div class="rc-section">Ingredients</div>
+          <ul class="ing-list" id="r-ingredients"></ul>
+          <div class="rc-section">Instructions</div>
+          <div id="r-steps"></div>
+          <div class="pitstop-tip" id="r-tip"></div>
+        </div>
+        <div style="padding:0 14px 14px;">
+          <button class="shuffle-btn" onclick="buildRecipe()">🔄 Shuffle — Try Another</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- COOK CALCULATOR SCREEN -->
+    <div class="screen" id="screen-calc">
+      <div>
+        <div class="section-title">Cook Time & Temp</div>
+        <div class="section-sub">Pick your method, meat, and weight. We'll build your race plan.</div>
+      </div>
+      <div>
+        <div class="group-label">Cook Method</div>
+        <div class="option-grid">
+          <button class="option-btn" onclick="selectMethod('smoke',this)"><span class="opt-icon">💨</span>Smoker</button>
+          <button class="option-btn" onclick="selectMethod('grill',this)"><span class="opt-icon">🔥</span>Charcoal / Gas</button>
+          <button class="option-btn" onclick="selectMethod('griddle',this)"><span class="opt-icon">🍳</span>Flat Top Griddle</button>
+          <button class="option-btn" onclick="selectMethod('reverse',this)"><span class="opt-icon">⚡</span>Reverse Sear</button>
+        </div>
+      </div>
+      <div>
+        <div class="group-label">Meat</div>
+        <div class="meat-scroll" id="meat-chips">
+          <button class="meat-chip" onclick="selectMeat('beef',this)">🥩 Beef</button>
+          <button class="meat-chip" onclick="selectMeat('pork',this)">🐷 Pork</button>
+          <button class="meat-chip" onclick="selectMeat('chicken',this)">🍗 Chicken</button>
+          <button class="meat-chip" onclick="selectMeat('fish',this)">🐟 Fish</button>
+          <button class="meat-chip" onclick="selectMeat('lamb',this)">🐑 Lamb</button>
+          <button class="meat-chip" onclick="selectMeat('sausage',this)">🌭 Sausage</button>
+        </div>
+      </div>
+      <div>
+        <div class="group-label">Cut</div>
+        <select class="bp-select" id="cut-select" onchange="selectCut(this.value)">
+          <option value="">— select meat first —</option>
+        </select>
+      </div>
+      <div>
+        <div class="group-label">Weight</div>
+        <div class="weight-row">
+          <input type="number" class="weight-input" id="weight-input" placeholder="0" min="0.5" max="40" step="0.5">
+          <div class="unit-toggle">
+            <button class="unit-btn active" id="unit-lbs" onclick="setUnit('lbs')">lbs</button>
+            <button class="unit-btn" id="unit-kg" onclick="setUnit('kg')">kg</button>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="group-label">Target Doneness</div>
+        <select class="bp-select" id="doneness-select">
+          <option value="">— select cut first —</option>
+        </select>
+      </div>
+      <button class="cta-btn" onclick="calcCook()">🏁 Calculate My Cook</button>
+      <div class="race-plan" id="race-plan">
+        <div class="rp-header">
+          <div class="rp-title" id="plan-title">Race Plan</div>
+          <div class="rp-sub">Estimates only — always use a probe thermometer</div>
+        </div>
+        <div id="plan-steps"></div>
+      </div>
+    </div>
+
+    <!-- GRILL FINDER SCREEN -->
+    <div class="screen" id="screen-grill">
+      <div id="grill-quiz">
+        <div>
+          <div class="section-title">Find Your Perfect Pit</div>
+          <div class="section-sub">Answer 6 quick questions and we'll match you to your grill.</div>
+        </div>
+        <div>
+          <div class="q-counter" id="q-counter">Question 1 of 6</div>
+          <div class="progress-wrap"><div class="progress-fill" id="q-progress" style="width:16%"></div></div>
+        </div>
+        <div>
+          <div class="section-title" style="font-size:17px;margin-bottom:10px;" id="q-text"></div>
+          <div class="option-grid" id="q-options"></div>
+        </div>
+        <div class="error-msg" id="grill-error">Please pick an answer to continue.</div>
+        <div class="nav-row">
+          <button class="back-btn" id="grill-back" onclick="grillBack()">← Back</button>
+          <button class="next-btn" id="grill-next" onclick="grillNext()">Next →</button>
+        </div>
+      </div>
+      <div class="grill-result" id="grill-result">
+        <div class="gr-header">
+          <span class="gr-icon" id="gr-icon">🔥</span>
+          <div class="gr-match-label">Your Grill Match</div>
+          <div class="gr-name" id="gr-name"></div>
+        </div>
+        <div class="gr-body">
+          <div class="gr-desc" id="gr-desc"></div>
+          <div class="gr-tags" id="gr-tags"></div>
+          <div class="gr-also-title">Also Worth Considering</div>
+          <div class="gr-also-text" id="gr-also"></div>
+          <button class="restart-btn" onclick="grillRestart()">← Start Over</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── SPLASH ──
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        document.getElementById('splash').classList.add('hide');
+        document.getElementById('app').classList.add('visible');
+        setTimeout(() => { document.getElementById('splash').style.display = 'none'; }, 500);
+      }, 1800);
+    });
+
+    // ── SERVICE WORKER ──
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    }
+
+    // ── STATE ──
+    var selectedMeal = '', selectedProteins = [], calcMethod = '', calcMeat = '', calcCut = '', calcUnit = 'lbs';
+    var grillAnswers = [], grillCurrentQ = 0;
+
+    var grillQuestions = [
+      { q: "What's your biggest cooking priority?", opts: [['🔥','Max Flavor','flavor'],['🎯','Consistency & Ease','ease'],['⚡','Speed','speed'],['🍳','Total Versatility','versatile']] },
+      { q: "How hands-on do you want to be?", opts: [['🖐️','Fully Hands-On','handon'],['👀','Check In Occasionally','checkin'],['📱','Mostly Hands-Off','handsoff'],['🛋️','Zero Babysitting','walkaway']] },
+      { q: "What's your typical cook style?", opts: [['🐷','Low & Slow BBQ','lowslow'],['🥩','Hot & Fast Grilling','hotfast'],['🥞','Flat Top Everything','flattop'],['🔄','A Little Of Everything','mixed']] },
+      { q: "What's your budget?", opts: [['💵','Under $300','low'],['💰','$300–$700','mid'],['💎','$700–$1,500','high'],['🏆','$1,500+','premium']] },
+      { q: "How much outdoor space do you have?", opts: [['🏙️','Apartment/Small Patio','small'],['🏡','Average Backyard','avg'],['🌳','Large Backyard','large'],['🤠','Acreage / Rural','acreage']] },
+      { q: "How patient are you for great results?", opts: [['⏱️','30 Min or Less','fast'],['🕐','A Couple Hours','medium'],['🕕','All Day If Needed','slow'],['🌙','Overnight? Bring It','overnight']] }
+    ];
+
+    var cutData = {
+      beef:    { cuts:['Brisket','Ribeye','Chuck Roast','Burger Patties','Tri-Tip','Back Ribs','Sirloin'], doneness:{ smoke:['160°F Pull (sliced)','205°F Pull (tender)'], grill:['Rare (125°F)','Med Rare (135°F)','Medium (145°F)','Med Well (155°F)','Well Done (165°F)'], griddle:['Med Rare (135°F)','Medium (145°F)','Well Done (165°F)'], reverse:['Med Rare (135°F)','Medium (145°F)','Med Well (155°F)'] }},
+      pork:    { cuts:['Pork Butt / Shoulder','Baby Back Ribs','St. Louis Ribs','Pork Tenderloin','Pork Chops','Whole Hog'], doneness:{ smoke:['195°F (sliceable)','205°F (pullable)'], grill:['145°F (safe)','160°F (well done)'], griddle:['145°F (safe)','160°F (well done)'], reverse:['145°F (safe)','160°F (well done)'] }},
+      chicken: { cuts:['Whole Chicken','Spatchcock Chicken','Chicken Thighs','Chicken Breasts','Chicken Wings','Drumsticks'], doneness:{ smoke:['165°F internal'], grill:['165°F internal'], griddle:['165°F internal'], reverse:['165°F internal'] }},
+      fish:    { cuts:['Salmon Fillet','Whole Fish','Mahi-Mahi','Swordfish Steak','Tilapia'], doneness:{ smoke:['140°F (flaky)','145°F (safe)'], grill:['145°F (opaque, flaky)'], griddle:['145°F (opaque, flaky)'], reverse:['145°F (opaque, flaky)'] }},
+      lamb:    { cuts:['Leg of Lamb','Lamb Chops','Rack of Lamb','Lamb Shoulder'], doneness:{ smoke:['150°F (medium)','195°F (pulled)'], grill:['145°F (med rare)','160°F (medium)'], griddle:['145°F (med rare)','160°F (medium)'], reverse:['145°F (med rare)','160°F (medium)'] }},
+      sausage: { cuts:['Bratwurst','Italian Sausage','Andouille','Smoked Sausage Links','Breakfast Links'], doneness:{ smoke:['165°F internal'], grill:['165°F internal'], griddle:['165°F internal'], reverse:['165°F internal'] }}
+    };
+
+    var cookCalcData = {
+      beef:{
+        'Brisket':        { smoke:{minPerLb:60,maxPerLb:90,pitTemp:'225–250°F',rest:'60 min wrapped'}, reverse:{smokeMin:45,smokeMax:60,pitTemp:'225°F smoke → 500°F sear',rest:'5 min'} },
+        'Ribeye':         { grill:{minPerLb:8,maxPerLb:12,pitTemp:'450–500°F',rest:'5–10 min'}, reverse:{smokeMin:30,smokeMax:45,pitTemp:'225°F → 500°F sear',rest:'5 min'} },
+        'Burger Patties': { grill:{minPer:4,maxPer:6,pitTemp:'400–450°F',perWhat:'per side',rest:'2 min'}, griddle:{minPer:3,maxPer:5,pitTemp:'400°F',perWhat:'per side',rest:'2 min'} },
+        'default':        { smoke:{minPerLb:45,maxPerLb:75,pitTemp:'225–250°F',rest:'20 min'}, grill:{minPerLb:6,maxPerLb:10,pitTemp:'400–450°F',rest:'5 min'}, griddle:{minPerLb:4,maxPerLb:8,pitTemp:'375–400°F',rest:'5 min'}, reverse:{smokeMin:35,smokeMax:55,pitTemp:'225°F → 500°F',rest:'5 min'} }
+      },
+      pork:{
+        'Pork Butt / Shoulder': { smoke:{minPerLb:60,maxPerLb:90,pitTemp:'225–250°F',rest:'60 min wrapped'} },
+        'Baby Back Ribs':       { smoke:{totalMin:180,totalMax:270,pitTemp:'225–250°F',note:'3-2-1 method',rest:'15 min'} },
+        'St. Louis Ribs':       { smoke:{totalMin:240,totalMax:360,pitTemp:'225–250°F',note:'3-2-1 method',rest:'15 min'} },
+        'default':              { smoke:{minPerLb:45,maxPerLb:75,pitTemp:'225–250°F',rest:'20 min'}, grill:{minPerLb:5,maxPerLb:8,pitTemp:'375–400°F',rest:'5 min'}, griddle:{minPerLb:4,maxPerLb:7,pitTemp:'350–375°F',rest:'5 min'}, reverse:{smokeMin:30,smokeMax:50,pitTemp:'225°F → 450°F',rest:'5 min'} }
+      },
+      chicken:{
+        'Whole Chicken':   { smoke:{minPerLb:35,maxPerLb:45,pitTemp:'275–300°F',rest:'15 min'}, grill:{minPerLb:15,maxPerLb:20,pitTemp:'375°F indirect',rest:'10 min'} },
+        'Chicken Thighs':  { smoke:{totalMin:90,totalMax:120,pitTemp:'275°F',rest:'5 min'}, grill:{totalMin:20,totalMax:30,pitTemp:'400°F',rest:'5 min'}, griddle:{totalMin:12,totalMax:18,pitTemp:'375°F',rest:'5 min'} },
+        'Chicken Wings':   { smoke:{totalMin:120,totalMax:150,pitTemp:'250–275°F',rest:'5 min'}, grill:{totalMin:20,totalMax:28,pitTemp:'400°F',rest:'3 min'}, griddle:{totalMin:15,totalMax:20,pitTemp:'375°F',rest:'3 min'} },
+        'default':         { smoke:{minPerLb:30,maxPerLb:45,pitTemp:'275°F',rest:'10 min'}, grill:{minPerLb:10,maxPerLb:15,pitTemp:'375–400°F',rest:'5 min'}, griddle:{minPerLb:8,maxPerLb:12,pitTemp:'350°F',rest:'5 min'}, reverse:{smokeMin:25,smokeMax:40,pitTemp:'225°F → 450°F',rest:'5 min'} }
+      },
+      fish:    { default:{ grill:{minPerLb:8,maxPerLb:12,pitTemp:'400°F',rest:'2 min'}, griddle:{minPerLb:5,maxPerLb:8,pitTemp:'375°F',rest:'2 min'}, smoke:{minPerLb:30,maxPerLb:45,pitTemp:'225°F',rest:'5 min'} } },
+      lamb:    { default:{ smoke:{minPerLb:40,maxPerLb:60,pitTemp:'225–250°F',rest:'20 min'}, grill:{minPerLb:6,maxPerLb:10,pitTemp:'400°F',rest:'5 min'}, reverse:{smokeMin:35,smokeMax:55,pitTemp:'225°F → 450°F',rest:'5 min'} } },
+      sausage: { default:{ grill:{totalMin:15,totalMax:25,pitTemp:'350–375°F',rest:'none'}, griddle:{totalMin:12,totalMax:18,pitTemp:'350°F',rest:'none'}, smoke:{totalMin:60,totalMax:90,pitTemp:'225°F',rest:'5 min'} } }
+    };
+
+    // ── TAB SWITCHING ──
+    function switchTab(tab) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.getElementById('screen-' + tab).classList.add('active');
+      document.getElementById('tab-' + tab).classList.add('active');
+      if (tab === 'grill') renderGrillQuestion();
+    }
+
+    // ── RECIPE BUILDER ──
+    function selectMeal(meal, btn) {
+      selectedMeal = meal;
+      document.querySelectorAll('#screen-recipe .option-grid:first-of-type .option-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    }
+    function toggleProtein(p, btn) {
+      if (btn.classList.contains('selected')) { btn.classList.remove('selected'); selectedProteins = selectedProteins.filter(x => x !== p); }
+      else { btn.classList.add('selected'); selectedProteins.push(p); }
+    }
+    async function buildRecipe() {
+      var err = document.getElementById('recipe-error');
+      err.classList.remove('visible');
+      if (!selectedMeal) { err.textContent = 'Pick a meal type first!'; err.classList.add('visible'); return; }
+      if (!selectedProteins.length) { err.textContent = 'Select at least one protein.'; err.classList.add('visible'); return; }
+      document.getElementById('recipe-result').classList.remove('visible');
+      document.getElementById('recipe-loading').classList.add('visible');
+      document.getElementById('build-btn').disabled = true;
+      try {
+        var resp = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-6', max_tokens: 1000,
+            messages: [{ role: 'user', content: 'You are the Backyard Pitstop AI. Generate a backyard BBQ/grilling/smoking recipe.\nMeal type: ' + selectedMeal + '\nProteins: ' + selectedProteins.join(', ') + '\nStyle: authentic backyard BBQ. Achievable for a home cook.\n\nRespond ONLY with a JSON object (no markdown, no backticks):\n{"name":"Recipe Name","prep":"X min","cook":"X min","serves":"4","grill":"Weber Kettle","ingredients":["item 1","item 2","item 3","item 4","item 5","item 6"],"steps":["Step 1","Step 2","Step 3","Step 4"],"tip":"One practical Pitstop Tip"}' }]
+          })
+        });
+        var data = await resp.json();
+        var text = data.content.map(c => c.text || '').join('').replace(/```json|```/g,'').trim();
+        var r = JSON.parse(text);
+        document.getElementById('r-name').textContent = r.name;
+        document.getElementById('r-prep').textContent = r.prep;
+        document.getElementById('r-cook').textContent = r.cook;
+        document.getElementById('r-serves').textContent = r.serves;
+        document.getElementById('r-grill').textContent = r.grill;
+        var ingEl = document.getElementById('r-ingredients'); ingEl.innerHTML = '';
+        r.ingredients.forEach(i => { var li = document.createElement('li'); li.innerHTML = '<span class="ing-dot">●</span><span>' + i + '</span>'; ingEl.appendChild(li); });
+        var stEl = document.getElementById('r-steps'); stEl.innerHTML = '';
+        r.steps.forEach((s,i) => { var d = document.createElement('div'); d.className='step-item'; d.innerHTML='<div class="step-num">'+(i+1)+'</div><div class="step-text">'+s+'</div>'; stEl.appendChild(d); });
+        document.getElementById('r-tip').innerHTML = '🔥 <strong>Pitstop Tip:</strong> ' + r.tip;
+        document.getElementById('recipe-result').classList.add('visible');
+      } catch(e) {
+        document.getElementById('recipe-error').textContent = 'Something went wrong — tap to try again.';
+        document.getElementById('recipe-error').classList.add('visible');
+      }
+      document.getElementById('recipe-loading').classList.remove('visible');
+      document.getElementById('build-btn').disabled = false;
+    }
+
+    // ── COOK CALCULATOR ──
+    function selectMethod(m, btn) {
+      calcMethod = m;
+      document.querySelectorAll('#screen-calc .option-grid .option-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      updateCutOptions();
+    }
+    function selectMeat(m, btn) {
+      calcMeat = m; calcCut = '';
+      document.querySelectorAll('.meat-chip').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      updateCutOptions();
+    }
+    function updateCutOptions() {
+      var sel = document.getElementById('cut-select');
+      sel.innerHTML = '<option value="">— select a cut —</option>';
+      if (!calcMeat || !cutData[calcMeat]) return;
+      cutData[calcMeat].cuts.forEach(c => { var o = document.createElement('option'); o.value=c; o.textContent=c; sel.appendChild(o); });
+      updateDoneness();
+    }
+    function selectCut(v) { calcCut = v; updateDoneness(); }
+    function updateDoneness() {
+      var sel = document.getElementById('doneness-select');
+      sel.innerHTML = '<option value="">— select cut first —</option>';
+      if (!calcMeat || !calcMethod || !cutData[calcMeat]) return;
+      var opts = cutData[calcMeat].doneness[calcMethod] || cutData[calcMeat].doneness[Object.keys(cutData[calcMeat].doneness)[0]] || [];
+      opts.forEach(o => { var el = document.createElement('option'); el.value=o; el.textContent=o; sel.appendChild(el); });
+    }
+    function setUnit(u) {
+      calcUnit = u;
+      document.getElementById('unit-lbs').classList.toggle('active', u==='lbs');
+      document.getElementById('unit-kg').classList.toggle('active', u==='kg');
+    }
+    function calcCook() {
+      if (!calcMethod || !calcMeat || !calcCut || !document.getElementById('weight-input').value) return;
+      var weight = parseFloat(document.getElementById('weight-input').value);
+      var doneness = document.getElementById('doneness-select').value;
+      if (calcUnit==='kg') weight *= 2.205;
+      var meatData = cookCalcData[calcMeat] || {};
+      var cutInfo = meatData[calcCut] || meatData['default'] || {};
+      var mi = cutInfo[calcMethod] || cutInfo[Object.keys(cutInfo)[0]] || {};
+      var planEl = document.getElementById('plan-steps'); planEl.innerHTML = '';
+      var gd = {smoke:'Pellet Smoker',grill:'Charcoal/Gas Grill',griddle:'Flat Top Griddle',reverse:'Reverse Sear'};
+      document.getElementById('plan-title').textContent = '🏁 ' + calcCut + ' — ' + gd[calcMethod];
+      function addStep(icon,title,detail,temp) {
+        var d = document.createElement('div'); d.className='plan-step';
+        d.innerHTML = '<div class="plan-icon">'+icon+'</div><div><div class="plan-step-title">'+title+'</div><div class="plan-step-detail">'+detail+'</div>'+(temp?'<div><span class="temp-badge">'+temp+'</span></div>':'')+'</div>';
+        planEl.appendChild(d);
+      }
+      if (mi.minPerLb) {
+        var mn=Math.round(mi.minPerLb*weight), mx=Math.round(mi.maxPerLb*weight);
+        addStep('🔧','Prep Your Pit','Season your '+calcCut.toLowerCase()+' and rest at room temp 30 min.',mi.pitTemp);
+        addStep('⏱️','Cook Time',Math.round(mn/60)+'–'+Math.round(mx/60)+' hrs ('+mn+'–'+mx+' min) for '+weight.toFixed(1)+' lbs',doneness);
+        if(mi.rest) addStep('🛑','Rest','Rest for '+mi.rest+' before cutting.',null);
+      } else if (mi.totalMin) {
+        addStep('🔧','Prep','Prep and season your '+calcCut.toLowerCase()+'.',mi.pitTemp);
+        if(mi.note) addStep('📋','Method',mi.note,null);
+        addStep('⏱️','Cook Time',Math.round(mi.totalMin/60)+'–'+Math.round(mi.totalMax/60)+' hrs total',doneness);
+        if(mi.rest) addStep('🛑','Rest','Rest '+mi.rest+' before serving.',null);
+      } else if (mi.minPer) {
+        addStep('🔧','Heat Up','Get your surface ripping hot.',mi.pitTemp);
+        addStep('⏱️','Cook Time',mi.minPer+'–'+mi.maxPer+' min '+(mi.perWhat||'per side'),doneness);
+        if(mi.rest) addStep('🛑','Rest',mi.rest,null);
+      } else if (mi.smokeMin) {
+        addStep('💨','Phase 1: Smoke','Low and slow until 10–15°F below your target.',mi.pitTemp.split('→')[0].trim());
+        addStep('🔥','Phase 2: Sear','Crank the heat and sear hard — '+mi.smokeMin+'–'+mi.smokeMax+' min total.',(mi.pitTemp.split('→')[1]||'500°F').trim());
+        addStep('🎯','Pull Temp',doneness,null);
+        if(mi.rest) addStep('🛑','Rest',mi.rest,null);
+      }
+      addStep('🌡️','Always Verify','Use a probe thermometer — times are estimates only.',null);
+      var rp = document.getElementById('race-plan');
+      rp.classList.add('visible');
+      rp.scrollIntoView({behavior:'smooth',block:'nearest'});
+    }
+
+    // ── GRILL FINDER ──
+    function renderGrillQuestion() {
+      var q = grillQuestions[grillCurrentQ];
+      document.getElementById('q-counter').textContent = 'Question '+(grillCurrentQ+1)+' of 6';
+      document.getElementById('q-progress').style.width = Math.round(((grillCurrentQ+1)/6)*100)+'%';
+      document.getElementById('q-text').textContent = q.q;
+      var optsEl = document.getElementById('q-options'); optsEl.innerHTML = '';
+      q.opts.forEach(opt => {
+        var btn = document.createElement('button');
+        btn.className = 'option-btn'+(grillAnswers[grillCurrentQ]===opt[2]?' selected':'');
+        btn.innerHTML = '<span class="opt-icon">'+opt[0]+'</span>'+opt[1];
+        btn.onclick = () => {
+          grillAnswers[grillCurrentQ] = opt[2];
+          document.querySelectorAll('#q-options .option-btn').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          document.getElementById('grill-error').classList.remove('visible');
+        };
+        optsEl.appendChild(btn);
+      });
+      document.getElementById('grill-back').style.opacity = grillCurrentQ===0?'0.3':'1';
+      document.getElementById('grill-next').textContent = grillCurrentQ===5?'Find My Grill →':'Next →';
+    }
+    function grillNext() {
+      if (!grillAnswers[grillCurrentQ]) { document.getElementById('grill-error').classList.add('visible'); return; }
+      document.getElementById('grill-error').classList.remove('visible');
+      if (grillCurrentQ < 5) { grillCurrentQ++; renderGrillQuestion(); }
+      else showGrillResult();
+    }
+    function grillBack() { if (grillCurrentQ>0) { grillCurrentQ--; renderGrillQuestion(); } }
+    function showGrillResult() {
+      var a = grillAnswers;
+      var s = {pellet:0,charcoal:0,gas:0,flattop:0,kamado:0};
+      if(a[0]==='flavor'){s.charcoal+=3;s.kamado+=2;s.pellet+=1;} if(a[0]==='ease'){s.pellet+=3;s.gas+=2;} if(a[0]==='speed'){s.gas+=3;s.flattop+=2;} if(a[0]==='versatile'){s.kamado+=3;s.pellet+=2;s.flattop+=1;}
+      if(a[1]==='handon'){s.charcoal+=3;s.kamado+=2;} if(a[1]==='checkin'){s.kamado+=2;s.pellet+=1;} if(a[1]==='handsoff'){s.pellet+=3;s.gas+=1;} if(a[1]==='walkaway'){s.pellet+=3;s.gas+=2;}
+      if(a[2]==='lowslow'){s.pellet+=3;s.charcoal+=2;s.kamado+=2;} if(a[2]==='hotfast'){s.charcoal+=3;s.kamado+=2;s.gas+=2;} if(a[2]==='flattop'){s.flattop+=4;} if(a[2]==='mixed'){s.kamado+=3;s.pellet+=2;}
+      if(a[3]==='low'){s.charcoal+=2;s.gas+=1;} if(a[3]==='mid'){s.gas+=2;s.pellet+=1;s.charcoal+=1;} if(a[3]==='high'){s.pellet+=2;s.kamado+=2;s.flattop+=1;} if(a[3]==='premium'){s.kamado+=3;s.pellet+=2;}
+      if(a[4]==='small'){s.gas+=2;s.charcoal+=1;} if(a[4]==='avg'){s.gas+=1;s.charcoal+=1;s.pellet+=1;s.flattop+=1;} if(a[4]==='large'){s.pellet+=1;s.kamado+=1;s.flattop+=1;} if(a[4]==='acreage'){s.charcoal+=1;s.kamado+=1;s.pellet+=1;}
+      if(a[5]==='fast'){s.gas+=3;s.flattop+=2;} if(a[5]==='medium'){s.gas+=1;s.charcoal+=1;s.flattop+=1;s.pellet+=1;} if(a[5]==='slow'){s.pellet+=3;s.charcoal+=2;s.kamado+=2;} if(a[5]==='overnight'){s.pellet+=3;s.kamado+=2;s.charcoal+=1;}
+      var winner = Object.keys(s).reduce((a,b) => s[a]>s[b]?a:b);
+      var res = {
+        pellet:   {icon:'💨',name:'Pellet Smoker',    desc:"You want great BBQ without babysitting the fire all day. A pellet smoker gives you real wood smoke flavor with set-it-and-forget-it convenience. Perfect for low and slow cooks, overnight sessions, and consistent results every time.",tags:['Set-it-and-forget-it','Real wood smoke','Low & slow king','App controlled'],also:'Also consider a Kamado for more versatility, or a charcoal kettle if you want to get hands-on with the fire.'},
+        charcoal: {icon:'🔥',name:'Charcoal Kettle',  desc:"You're a hands-on pit master who lives for the process. Charcoal gives you max smoke flavor, serious searing heat, and the satisfaction of managing a live fire. The Weber Kettle is the GOAT for a reason.",tags:['Max flavor','Live fire control','Hot & fast capable','Budget friendly'],also:'Also consider a Kamado if you want better heat retention and more versatility at a higher budget.'},
+        gas:      {icon:'⚡',name:'Gas Grill',          desc:"You need dinner on the table fast without the setup drama. Gas heats up in minutes, holds consistent temps, and gets out of your way. Great for weeknight cooks, quick sears, and reliable everyday grilling.",tags:['Fast startup','Consistent heat','Weeknight friendly','Easy to use'],also:'Also consider a flat top griddle if you cook a lot of smash burgers, breakfast, or stir fry.'},
+        flattop:  {icon:'🍳',name:'Flat Top Griddle',  desc:"You're all about that smash burger, breakfast hash, and griddle everything lifestyle. Flat tops give you massive even cooking surface, perfect for feeding a crowd and cooking foods that fall through a grate.",tags:['Smash burgers','Breakfast everything','Huge cooking surface','High heat sear'],also:'Also consider a gas grill if you still want traditional grill marks and direct flame cooking.'},
+        kamado:   {icon:'🏺',name:'Kamado Grill',       desc:"You want to do it all — smoke low and slow, sear hot and fast, bake pizzas, and everything in between. A kamado is the Swiss Army knife of outdoor cooking. Premium price, unmatched versatility.",tags:['Smoke & grill hybrid','Incredible heat retention','All-in-one versatility','Premium quality'],also:'Also consider a pellet smoker if you want more automation, or a charcoal kettle for a more approachable entry price.'}
+      };
+      var r = res[winner];
+      document.getElementById('gr-icon').textContent = r.icon;
+      document.getElementById('gr-name').textContent = r.name;
+      document.getElementById('gr-desc').textContent = r.desc;
+      var tagsEl = document.getElementById('gr-tags'); tagsEl.innerHTML='';
+      r.tags.forEach(t => { var sp=document.createElement('span'); sp.className='gr-tag'; sp.textContent=t; tagsEl.appendChild(sp); });
+      document.getElementById('gr-also').textContent = r.also;
+      document.getElementById('grill-quiz').style.display = 'none';
+      document.getElementById('grill-result').classList.add('visible');
+    }
+    function grillRestart() {
+      grillAnswers=[]; grillCurrentQ=0;
+      document.getElementById('grill-result').classList.remove('visible');
+      document.getElementById('grill-quiz').style.display='block';
+      renderGrillQuestion();
+    }
+
+    renderGrillQuestion();
+  </script>
+</body>
+</html>
