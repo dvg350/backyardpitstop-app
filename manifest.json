@@ -2,6 +2,7 @@
   "name": "Backyard Pitstop",
   "short_name": "Pitstop",
   "description": "BBQ Recipe Builder, Cook Calculator & Grill Finder — all in one app.",
+  "id": "com.backyardpitstop.app",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#1a1a1a",
