@@ -88,8 +88,7 @@
     #app {
       display: flex;
       flex-direction: column;
-      height: 100%;
-      height: 100dvh;
+      min-height: 100dvh;
       background: #f5f0e8;
       max-width: 480px;
       margin: 0 auto;
@@ -107,6 +106,9 @@
       padding-bottom: 0;
       border-bottom: 3px solid var(--orange);
       flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
     }
     .header-top {
       display: flex;
@@ -152,12 +154,9 @@
     .screen {
       display: none;
       flex-direction: column;
-      flex: 1;
-      overflow-y: auto;
       padding: 16px;
       gap: 14px;
-      padding-bottom: calc(var(--safe-bottom) + 16px);
-      -webkit-overflow-scrolling: touch;
+      padding-bottom: calc(var(--safe-bottom) + 32px);
     }
     .screen.active { display: flex; }
 
@@ -577,13 +576,17 @@
       try {
         var resp = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true'
+          },
           body: JSON.stringify({
             model: 'claude-sonnet-4-6', max_tokens: 1000,
             messages: [{ role: 'user', content: 'You are the Backyard Pitstop AI. Generate a backyard BBQ/grilling/smoking recipe.\nMeal type: ' + selectedMeal + '\nProtein: ' + selectedProteins[0] + '\nStyle: authentic backyard BBQ. Achievable for a home cook.\n\nRespond ONLY with a valid JSON object. No markdown, no backticks, no extra text before or after. Example format:\n{"name":"Recipe Name","prep":"15 min","cook":"30 min","serves":"4","grill":"Weber Kettle","ingredients":["item 1","item 2","item 3","item 4","item 5","item 6"],"steps":["Step 1 text","Step 2 text","Step 3 text","Step 4 text"],"tip":"One practical BBQ tip"}' }]
           })
         });
-        if (!resp.ok) throw new Error('API error ' + resp.status);
+        if (!resp.ok) { var errText = await resp.text(); throw new Error('API ' + resp.status + ': ' + errText.slice(0,100)); }
         var data = await resp.json();
         if (!data.content || !data.content.length) throw new Error('Empty response');
         var text = data.content.map(function(c){ return c.text || ''; }).join('');
@@ -607,7 +610,7 @@
         document.getElementById('recipe-result').scrollIntoView({behavior:'smooth', block:'start'});
       } catch(e) {
         console.error('Recipe error:', e);
-        document.getElementById('recipe-error').textContent = 'Something went wrong — check your connection and try again.';
+        document.getElementById('recipe-error').textContent = 'Error: ' + e.message;
         document.getElementById('recipe-error').classList.add('visible');
       }
       document.getElementById('recipe-loading').classList.remove('visible');
@@ -696,8 +699,7 @@
       addStep('🌡️','Always Verify','Use a probe thermometer — times are estimates only.',null);
       var rp = document.getElementById('race-plan');
       rp.classList.add('visible');
-      var screen = document.getElementById('screen-calc');
-      setTimeout(function(){ screen.scrollTop = screen.scrollHeight; }, 100);
+      setTimeout(function(){ rp.scrollIntoView({behavior:'smooth', block:'start'}); }, 150);
     }
 
     // ── GRILL FINDER ──
