@@ -337,8 +337,8 @@
         <div class="section-sub">Pick a meal type and your proteins — we'll fire up a fresh recipe.</div>
       </div>
       <div>
-        <div class="group-label">Meal Type</div>
-        <div class="option-grid">
+        <div class="group-label">Meal Type — pick one</div>
+        <div class="option-grid" id="meal-grid">
           <button class="option-btn" onclick="selectMeal('breakfast',this)"><span class="opt-icon">🍳</span>Breakfast</button>
           <button class="option-btn" onclick="selectMeal('lunch',this)"><span class="opt-icon">🥙</span>Lunch</button>
           <button class="option-btn" onclick="selectMeal('dinner',this)"><span class="opt-icon">🍖</span>Dinner</button>
@@ -396,7 +396,7 @@
       </div>
       <div>
         <div class="group-label">Cook Method</div>
-        <div class="option-grid">
+        <div class="option-grid" id="method-grid">
           <button class="option-btn" onclick="selectMethod('smoke',this)"><span class="opt-icon">💨</span>Smoker</button>
           <button class="option-btn" onclick="selectMethod('grill',this)"><span class="opt-icon">🔥</span>Charcoal / Gas</button>
           <button class="option-btn" onclick="selectMethod('griddle',this)"><span class="opt-icon">🍳</span>Flat Top Griddle</button>
@@ -437,6 +437,7 @@
         </select>
       </div>
       <button class="cta-btn" onclick="calcCook()">🏁 Calculate My Cook</button>
+      <div class="error-msg" id="calc-error"></div>
       <div class="race-plan" id="race-plan">
         <div class="rp-header">
           <div class="rp-title" id="plan-title">Race Plan</div>
@@ -557,7 +558,7 @@
     // ── RECIPE BUILDER ──
     function selectMeal(meal, btn) {
       selectedMeal = meal;
-      document.querySelectorAll('#screen-recipe .option-grid:first-of-type .option-btn').forEach(b => b.classList.remove('selected'));
+      document.querySelectorAll('#meal-grid .option-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
     }
     function toggleProtein(p, btn) {
@@ -606,7 +607,7 @@
     // ── COOK CALCULATOR ──
     function selectMethod(m, btn) {
       calcMethod = m;
-      document.querySelectorAll('#screen-calc .option-grid .option-btn').forEach(b => b.classList.remove('selected'));
+      document.querySelectorAll('#method-grid .option-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       updateCutOptions();
     }
@@ -637,16 +638,24 @@
       document.getElementById('unit-kg').classList.toggle('active', u==='kg');
     }
     function calcCook() {
-      if (!calcMethod || !calcMeat || !calcCut || !document.getElementById('weight-input').value) return;
-      var weight = parseFloat(document.getElementById('weight-input').value);
-      var doneness = document.getElementById('doneness-select').value;
+      var cutEl = document.getElementById('cut-select');
+      var weightEl = document.getElementById('weight-input');
+      var calcCutVal = cutEl ? cutEl.value : calcCut;
+      var calcErr = document.getElementById('calc-error');
+      if (!calcMethod) { if(calcErr){calcErr.textContent='Pick a cook method first.';calcErr.classList.add('visible');} return; }
+      if (!calcMeat) { if(calcErr){calcErr.textContent='Select a meat type.';calcErr.classList.add('visible');} return; }
+      if (!calcCutVal) { if(calcErr){calcErr.textContent='Select a cut.';calcErr.classList.add('visible');} return; }
+      if (!weightEl || !weightEl.value || parseFloat(weightEl.value) <= 0) { if(calcErr){calcErr.textContent='Enter a weight.';calcErr.classList.add('visible');} return; }
+      if(calcErr) calcErr.classList.remove('visible');
+      var weight = parseFloat(weightEl.value);
+      var doneness = document.getElementById('doneness-select').value || 'See internal temp';
       if (calcUnit==='kg') weight *= 2.205;
       var meatData = cookCalcData[calcMeat] || {};
-      var cutInfo = meatData[calcCut] || meatData['default'] || {};
+      var cutInfo = meatData[calcCutVal] || meatData['default'] || {};
       var mi = cutInfo[calcMethod] || cutInfo[Object.keys(cutInfo)[0]] || {};
       var planEl = document.getElementById('plan-steps'); planEl.innerHTML = '';
       var gd = {smoke:'Pellet Smoker',grill:'Charcoal/Gas Grill',griddle:'Flat Top Griddle',reverse:'Reverse Sear'};
-      document.getElementById('plan-title').textContent = '🏁 ' + calcCut + ' — ' + gd[calcMethod];
+      document.getElementById('plan-title').textContent = '🏁 ' + calcCutVal + ' — ' + gd[calcMethod];
       function addStep(icon,title,detail,temp) {
         var d = document.createElement('div'); d.className='plan-step';
         d.innerHTML = '<div class="plan-icon">'+icon+'</div><div><div class="plan-step-title">'+title+'</div><div class="plan-step-detail">'+detail+'</div>'+(temp?'<div><span class="temp-badge">'+temp+'</span></div>':'')+'</div>';
@@ -654,11 +663,11 @@
       }
       if (mi.minPerLb) {
         var mn=Math.round(mi.minPerLb*weight), mx=Math.round(mi.maxPerLb*weight);
-        addStep('🔧','Prep Your Pit','Season your '+calcCut.toLowerCase()+' and rest at room temp 30 min.',mi.pitTemp);
+        addStep('🔧','Prep Your Pit','Season your '+calcCutVal.toLowerCase()+' and rest at room temp 30 min.',mi.pitTemp);
         addStep('⏱️','Cook Time',Math.round(mn/60)+'–'+Math.round(mx/60)+' hrs ('+mn+'–'+mx+' min) for '+weight.toFixed(1)+' lbs',doneness);
         if(mi.rest) addStep('🛑','Rest','Rest for '+mi.rest+' before cutting.',null);
       } else if (mi.totalMin) {
-        addStep('🔧','Prep','Prep and season your '+calcCut.toLowerCase()+'.',mi.pitTemp);
+        addStep('🔧','Prep','Prep and season your '+calcCutVal.toLowerCase()+'.',mi.pitTemp);
         if(mi.note) addStep('📋','Method',mi.note,null);
         addStep('⏱️','Cook Time',Math.round(mi.totalMin/60)+'–'+Math.round(mi.totalMax/60)+' hrs total',doneness);
         if(mi.rest) addStep('🛑','Rest','Rest '+mi.rest+' before serving.',null);
@@ -671,6 +680,8 @@
         addStep('🔥','Phase 2: Sear','Crank the heat and sear hard — '+mi.smokeMin+'–'+mi.smokeMax+' min total.',(mi.pitTemp.split('→')[1]||'500°F').trim());
         addStep('🎯','Pull Temp',doneness,null);
         if(mi.rest) addStep('🛑','Rest',mi.rest,null);
+      } else {
+        addStep('⚠️','No Data','Try a different method or cut combination.',null);
       }
       addStep('🌡️','Always Verify','Use a probe thermometer — times are estimates only.',null);
       var rp = document.getElementById('race-plan');
