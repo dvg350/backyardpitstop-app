@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1a1a1a">
+  <meta name="description" content="Privacy policy for the Backyard Pitstop app.">
+  <title>Privacy — Backyard Pitstop</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --orange: #f97316;
+      --orange-dark: #c2570d;
+      --dark: #1a1a1a;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    html, body { min-height: 100%; background: #1a1a1a; }
+    .page {
+      min-height: 100dvh;
+      max-width: 480px;
+      margin: 0 auto;
+      background: #f5f0e8;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: var(--dark);
+      padding: calc(var(--safe-top) + 14px) 16px 14px;
+      border-bottom: 3px solid var(--orange);
+    }
+    header a {
+      font-family: 'Lato', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.7);
+      text-decoration: none;
+    }
+    h1 {
+      font-family: 'Oswald', sans-serif;
+      font-weight: 500;
+      color: white;
+      font-size: 22px;
+      margin-top: 8px;
+    }
+    h1 span { color: var(--orange); }
+    main {
+      padding: 16px 16px calc(var(--safe-bottom) + 28px);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    h2 {
+      font-family: 'Oswald', sans-serif;
+      font-size: 16px;
+      font-weight: 500;
+      color: #1a1a1a;
+      margin-bottom: 6px;
+    }
+    p, li {
+      font-family: 'Lato', sans-serif;
+      font-size: 14px;
+      color: #333;
+      line-height: 1.55;
+    }
+    section {
+      background: white;
+      border: 1.5px solid #e8e0d4;
+      border-radius: 12px;
+      padding: 14px;
+    }
+    ul { padding-left: 18px; }
+    li { margin-top: 6px; }
+    a { color: var(--orange-dark); }
+    .updated {
+      font-family: 'Lato', sans-serif;
+      font-size: 12px;
+      color: #888;
+      font-weight: 700;
+    }
+    section p + p { margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <a href="index.html">← Backyard Pitstop</a>
+      <h1>Privacy <span>policy</span></h1>
+    </header>
+    <main>
+      <p class="updated">Last updated November 11, 2026</p>
+
+      <section>
+        <h2>What this app is</h2>
+        <p>Backyard Pitstop is a BBQ app with a Recipe Builder, a Cook Calculator, and a Grill Finder. The same app is available on the web at app.backyardpitstop.com and on Google Play as a Trusted Web Activity, package com.backyardpitstop.app.</p>
+      </section>
+
+      <section>
+        <h2>No accounts, no personal data</h2>
+        <p>There are no accounts and no sign-in. The app does not ask for your name, email, phone number, or any other personal information, and it does not collect personal data.</p>
+        <p>Meal and protein choices, cook calculator entries, and Grill Finder answers stay in memory on your device for the current visit. They are not saved to an account and are not sent to us. The app stores its own files in the browser so it can open offline. That cache does not include personal data.</p>
+      </section>
+
+      <section>
+        <h2>Recipe Builder</h2>
+        <p>Recipes come from a recipe bank built into the app. Picking a meal type and a protein selects a matching recipe from that local list on your device. The Recipe Builder does not call an AI service or a recipe API.</p>
+      </section>
+
+      <section>
+        <h2>Third parties</h2>
+        <p>The app does not use analytics, advertising, or account services. It loads two outside resources:</p>
+        <ul>
+          <li><strong>Google Fonts.</strong> The app requests the Oswald and Lato fonts from fonts.googleapis.com when a page loads. Your browser sends that request to Google, which may receive your IP address and usual request details such as browser type.</li>
+          <li><strong>Unsplash.</strong> When you build a recipe, the app shows a photo from images.unsplash.com. Your browser requests that image from Unsplash, which may receive your IP address and usual request details.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Contact</h2>
+        <p>Questions about this policy: <a href="mailto:info@backyardpitstop.com">info@backyardpitstop.com</a></p>
+      </section>
+    </main>
+  </div>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>

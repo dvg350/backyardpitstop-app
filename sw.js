@@ -1,7 +1,8 @@
-const CACHE_NAME = 'bp-pitstop-v3';
+const CACHE_NAME = 'bp-pitstop-v4';
 const ASSETS = [
   './',
   './index.html',
+  './privacy.html',
   './logo.png',
   './icons/icon-192x192.png',
   './icons/icon-512x512.png',
@@ -23,11 +24,6 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Always go network-first for the Anthropic API
-  if (e.request.url.includes('anthropic.com')) {
-    e.respondWith(fetch(e.request));
-    return;
-  }
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request).then(resp => {
       if (resp && resp.status === 200 && resp.type === 'basic') {
@@ -35,6 +31,10 @@ self.addEventListener('fetch', e => {
         caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
       }
       return resp;
-    })).catch(() => caches.match('./index.html'))
+    })).catch(() => {
+      var path = new URL(e.request.url).pathname;
+      if (path.endsWith('/privacy.html')) return caches.match('./privacy.html');
+      return caches.match('./index.html');
+    })
   );
 });
