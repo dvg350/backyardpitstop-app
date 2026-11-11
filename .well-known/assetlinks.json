@@ -3,6 +3,9 @@
   "target": {
     "namespace": "android_app",
     "package_name": "com.backyardpitstop.app",
-    "sha256_cert_fingerprints": ["54:7A:EA:69:48:89:29:35:F6:00:7D:65:AD:34:38:11:CE:60:5C:FF:CF:29:98:19:6A:2A:AE:DB:A2:36:5E:96"]
+    "sha256_cert_fingerprints": [
+      "54:7A:EA:69:48:89:29:35:F6:00:7D:65:AD:34:38:11:CE:60:5C:FF:CF:29:98:19:6A:2A:AE:DB:A2:36:5E:96",
+      "77:19:16:01:9E:9E:A5:27:08:76:46:BB:84:4C:93:C9:B3:A2:7C:EB:DB:D8:7A:BC:48:E8:C8:AA:36:16:0F:C1"
+    ]
   }
 }]
