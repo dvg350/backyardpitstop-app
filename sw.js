@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bp-pitstop-v4';
+const CACHE_NAME = 'bp-pitstop-v5';
 const ASSETS = [
   './',
   './index.html',
